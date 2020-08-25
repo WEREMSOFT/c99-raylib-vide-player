@@ -89,7 +89,7 @@ $(BLD_D)%.$(BIN_EXTENSION): $(SRC_D)%.c
 	@echo ""
 
 $(HTML_D)%.html: $(SRC_FILES)
-	$(EMSC_CC_COMMAND) -g4 --source-map-base http://127.0.0.1:5500/html/ $^ -o $@ $(EMSC_STATIC_LIBS_D)
+	$(EMSC_CC_COMMAND) -g4 --source-map-base https://weremsoft.github.io/c99-raylib-vide-player/ $^ -o $@ $(EMSC_STATIC_LIBS_D)
 	cp -r src $(HTML_D)/src
 
 print_information:
