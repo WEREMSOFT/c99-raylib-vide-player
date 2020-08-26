@@ -15,36 +15,30 @@
 typedef struct app_context_t {
     plm_t* plm_video;
     RenderTexture2D canvas;
+    Image video_frame;
+    Texture2D video_container_texture;
     double seek_to;
-	uint8_t *rgb_data;
 } app_context_t;
 
 
 void app_on_video(plm_t *mpeg, plm_frame_t *frame, void *user) {
-	app_context_t *self = (app_context_t *)user;
-	
-	// Hand the decoded data over to OpenGL. For the RGB texture mode, the
-	// YCrCb->RGB conversion is done on the CPU.
+	app_context_t *app_context = (app_context_t *)user;
 
-    Image checkedIm = {
-        .data = self->rgb_data,             // We can assign pixels directly to data
-        .width = frame->width,
-        .height = frame->height,
-        .format = UNCOMPRESSED_R8G8B8,
-        .mipmaps = 1
-    }; 
+    static int stride = 2880;
+ 
+    plm_frame_to_rgb(frame, app_context->video_frame.data, stride);
 
-    printf("frame decoded\n");
-	plm_frame_to_rgb(frame, self->rgb_data, frame->width * 3);
+    UpdateTexture(app_context->video_container_texture, app_context->video_frame.data);
+    
+    BeginDrawing();
+    {
 
-    Texture2D temp_texture = LoadTextureFromImage(checkedIm);
-    UnloadImage(checkedIm);
+        ClearBackground(WHITE);
+        DrawTexture(app_context->video_container_texture, 0, 0, WHITE);
+        DrawFPS(10, 10);
 
-    BeginTextureMode(self->canvas);
-    DrawTexture(temp_texture, 0, 0, WHITE);
-    EndTextureMode();
-
-    UnloadTexture(temp_texture);
+    }
+    EndDrawing();
 
 }
 
@@ -54,25 +48,22 @@ app_context_t app_context_create(){
     return_value.canvas = LoadRenderTexture(WIDTH, HEIGHT);
     return_value.plm_video = plm_create_with_filename("assets/bjork-all-is-full-of-love.mpg");
 
-    plm_set_video_decode_callback(return_value.plm_video, app_on_video, &return_value);
-
     assert(return_value.plm_video && "Can't open video");
 
+    plm_set_loop(return_value.plm_video, true);
+
+    printf("framerrate: %f\n", plm_get_framerate(return_value.plm_video));
+
     int num_pixels = plm_get_width(return_value.plm_video) * plm_get_height(return_value.plm_video);
-	return_value.rgb_data = (uint8_t*)malloc(num_pixels * 3);
+	uint8_t *rgb_data = (uint8_t*)malloc(num_pixels * 3);
 
-    return_value.seek_to = plm_get_duration(return_value.plm_video) * 0.5f;
-    plm_seek(return_value.plm_video, return_value.seek_to, FALSE);
+    return_value.video_frame.data = rgb_data;
+    return_value.video_frame.width = plm_get_width(return_value.plm_video);
+    return_value.video_frame.height = plm_get_height(return_value.plm_video);
+    return_value.video_frame.format = UNCOMPRESSED_R8G8B8;
+    return_value.video_frame.mipmaps = 1;
 
-
-    Image checked = GenImageChecked(100, 100, 50, 50, RED, GREEN);
-
-    Texture2D texture = LoadTextureFromImage(checked);
-    UnloadImage(checked);
-
-    BeginTextureMode(return_value.canvas);
-    DrawTexture(texture, 100, 100, WHITE);
-    EndTextureMode();
+    return_value.video_container_texture = LoadTextureFromImage(return_value.video_frame);
 
     return return_value;
 }
@@ -80,20 +71,18 @@ app_context_t app_context_create(){
 void app_context_fini(app_context_t* app_context){
     UnloadRenderTexture(app_context->canvas);
     plm_destroy(app_context->plm_video);
-    free(app_context->rgb_data);
+    UnloadImage(app_context->video_frame);
 }
 
 void update_frame(app_context_t* app_context)
 {
-    BeginDrawing();
-    {
+    static int stride = 2880;
+    static double elapsed_time = 0.0;
+    static double elapsed_time_increment = 0.001;
 
-        ClearBackground(WHITE);
-        DrawTextureRec(app_context->canvas.texture, (Rectangle){0, 0, WIDTH, -HEIGHT}, (Vector2){0}, WHITE);
-        DrawFPS(10, 10);
+    elapsed_time = GetTime();
 
-    }
-    EndDrawing();
+    plm_decode(app_context->plm_video, elapsed_time);
 }
 
 int main(void)
@@ -108,9 +97,11 @@ int main(void)
 
 
     InitWindow(WIDTH, HEIGHT, "This is a network test");
-    SetTargetFPS(60);
+    SetTargetFPS(100);
    
     app_context_t app_context = app_context_create();
+
+    plm_set_video_decode_callback(app_context.plm_video, app_on_video, &app_context);
 
     BeginTextureMode(app_context.canvas);
     DrawCircle(10, 10, 10, GREEN);

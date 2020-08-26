@@ -69,6 +69,7 @@ all: print_information $(BLD_D)main.$(BIN_EXTENSION) web
 
 main: $(OBJ_FILES)
 	$(CC_COMMAND) -o $(BLD_D)$@.bin $^ $(LINK_LIBS)
+	@make copy_assets
 
 web: $(HTML_D)main.html
 	mv $(HTML_D)main.html $(HTML_D)index.html
@@ -124,6 +125,7 @@ debug_%: $(BLD_D)%.$(BIN_EXTENSION)
 
 run_%: $(BLD_D)%.$(BIN_EXTENSION)
 	$^
+	@make copy_assets
 
 test_%: $(TEST_BLD_D)%.spec.$(BIN_EXTENSION)
 	$^
