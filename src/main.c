@@ -14,21 +14,18 @@
 
 typedef struct app_context_t {
     plm_t* plm_video;
-    RenderTexture2D canvas;
     Image video_frame;
     Texture2D video_container_texture;
     AudioStream audio_stream;
+    double base_time;
+    double frame_rate;
 } app_context_t;
 
 
 void app_on_audio(plm_t *mpeg, plm_samples_t *samples, void *user) {
 	app_context_t *app_context = (app_context_t *)user;
-
-	// Hand the decoded samples over to SDL
-	
-	int size = sizeof(float) * samples->count * 2;
-	// SDL_QueueAudio(self->audio_device, samples->interleaved, size);
-    UpdateAudioStream(app_context->audio_stream, samples->interleaved, PLM_AUDIO_SAMPLES_PER_FRAME*2);
+    while(IsAudioStreamProcessed(app_context->audio_stream))
+        UpdateAudioStream(app_context->audio_stream, samples->interleaved, PLM_AUDIO_SAMPLES_PER_FRAME * 2);
 }
 
 void app_on_video(plm_t *mpeg, plm_frame_t *frame, void *user) {
@@ -39,40 +36,35 @@ void app_on_video(plm_t *mpeg, plm_frame_t *frame, void *user) {
     plm_frame_to_rgb(frame, app_context->video_frame.data, stride);
 
     UpdateTexture(app_context->video_container_texture, app_context->video_frame.data);
-    
-    BeginDrawing();
-    {
-
-        ClearBackground(WHITE);
-        DrawTexture(app_context->video_container_texture, 0, 0, WHITE);
-        DrawFPS(10, 10);
-
-    }
-    EndDrawing();
 
 }
+
+#define AUDIO_BUFFER_SIZE 1152
 
 app_context_t app_context_create(){
     app_context_t return_value = {0};
 
-    return_value.canvas = LoadRenderTexture(WIDTH, HEIGHT);
     return_value.plm_video = plm_create_with_filename("assets/bjork-all-is-full-of-love.mpg");
 
     assert(return_value.plm_video && "Can't open video");
+
+    return_value.base_time = GetTime();
+
+    return_value.frame_rate = plm_get_framerate(return_value.plm_video);
 
     plm_set_loop(return_value.plm_video, true);
 
     if(plm_get_num_audio_streams(return_value.plm_video) > 0){
         InitAudioDevice();
         int sample_rate = plm_get_samplerate(return_value.plm_video);
+
         return_value.audio_stream = InitAudioStream(sample_rate, 32, 2);
+        // return_value.audio_stream.sampleSize = 1152;
         PlayAudioStream(return_value.audio_stream);
         plm_set_audio_lead_time(return_value.plm_video, (double)PLM_AUDIO_SAMPLES_PER_FRAME/ (double)sample_rate);
     }
 
     plm_set_audio_enabled(return_value.plm_video, TRUE);
-
-    printf("framerrate: %f\n", plm_get_framerate(return_value.plm_video));
 
     int num_pixels = plm_get_width(return_value.plm_video) * plm_get_height(return_value.plm_video);
 	uint8_t *rgb_data = (uint8_t*)malloc(num_pixels * 3);
@@ -89,20 +81,31 @@ app_context_t app_context_create(){
 }
 
 void app_context_fini(app_context_t* app_context){
-    UnloadRenderTexture(app_context->canvas);
     plm_destroy(app_context->plm_video);
     UnloadImage(app_context->video_frame);
 }
 
 void update_frame(app_context_t* app_context)
 {
-    static int stride = 2880;
     static double elapsed_time = 0.0;
     static double elapsed_time_increment = 0.001;
 
-    elapsed_time = GetTime();
+    elapsed_time = (GetTime() - app_context->base_time);
 
-    plm_decode(app_context->plm_video, elapsed_time);
+
+    if(elapsed_time >= (1.0 / app_context->frame_rate)){
+        app_context->base_time = GetTime();
+        plm_decode(app_context->plm_video, elapsed_time);
+    }
+
+    BeginDrawing();
+    {
+        ClearBackground(WHITE);
+        DrawTexture(app_context->video_container_texture, 0, 0, WHITE);
+        DrawFPS(10, 10);
+    }
+    EndDrawing();
+
 }
 
 int main(void)
@@ -116,7 +119,7 @@ int main(void)
 #endif
 
 
-    InitWindow(WIDTH, HEIGHT, "This is a network test");
+    InitWindow(WIDTH, HEIGHT, "This is a video decoding test");
     SetTargetFPS(100);
    
     app_context_t app_context = app_context_create();
