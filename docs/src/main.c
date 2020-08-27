@@ -17,9 +17,19 @@ typedef struct app_context_t {
     RenderTexture2D canvas;
     Image video_frame;
     Texture2D video_container_texture;
-    double seek_to;
+    AudioStream audio_stream;
 } app_context_t;
 
+
+void app_on_audio(plm_t *mpeg, plm_samples_t *samples, void *user) {
+	app_context_t *app_context = (app_context_t *)user;
+
+	// Hand the decoded samples over to SDL
+	
+	int size = sizeof(float) * samples->count * 2;
+	// SDL_QueueAudio(self->audio_device, samples->interleaved, size);
+    UpdateAudioStream(app_context->audio_stream, samples->interleaved, PLM_AUDIO_SAMPLES_PER_FRAME*2);
+}
 
 void app_on_video(plm_t *mpeg, plm_frame_t *frame, void *user) {
 	app_context_t *app_context = (app_context_t *)user;
@@ -51,6 +61,16 @@ app_context_t app_context_create(){
     assert(return_value.plm_video && "Can't open video");
 
     plm_set_loop(return_value.plm_video, true);
+
+    if(plm_get_num_audio_streams(return_value.plm_video) > 0){
+        InitAudioDevice();
+        int sample_rate = plm_get_samplerate(return_value.plm_video);
+        return_value.audio_stream = InitAudioStream(sample_rate, 32, 2);
+        PlayAudioStream(return_value.audio_stream);
+        plm_set_audio_lead_time(return_value.plm_video, (double)PLM_AUDIO_SAMPLES_PER_FRAME/ (double)sample_rate);
+    }
+
+    plm_set_audio_enabled(return_value.plm_video, TRUE);
 
     printf("framerrate: %f\n", plm_get_framerate(return_value.plm_video));
 
@@ -102,10 +122,7 @@ int main(void)
     app_context_t app_context = app_context_create();
 
     plm_set_video_decode_callback(app_context.plm_video, app_on_video, &app_context);
-
-    BeginTextureMode(app_context.canvas);
-    DrawCircle(10, 10, 10, GREEN);
-    EndTextureMode();
+    plm_set_audio_decode_callback(app_context.plm_video, app_on_audio, &app_context);
 
 #ifdef OS_WEB
     emscripten_set_main_loop_arg(update_frame, &app_context, 0, 1);
