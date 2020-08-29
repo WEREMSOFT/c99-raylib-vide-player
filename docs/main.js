@@ -192,7 +192,7 @@ var Module = typeof Module !== 'undefined' ? Module : {};
     }
   
    }
-   loadPackage({"files": [{"filename": "/assets/bjork-all-is-full-of-love.mpg", "start": 0, "end": 47519744, "audio": 0}], "remote_package_size": 47519744, "package_uuid": "4adacb53-86cc-494d-ab30-6f7df1d10fc1"});
+   loadPackage({"files": [{"filename": "/assets/bjork-all-is-full-of-love.mpg", "start": 0, "end": 47519744, "audio": 0}], "remote_package_size": 47519744, "package_uuid": "29a74fd3-65f8-4038-88f6-d9e0dbd309d9"});
   
   })();
   
@@ -811,8 +811,8 @@ var wasmMemory;
 // In the wasm backend, we polyfill the WebAssembly object,
 // so this creates a (non-native-wasm) table for us.
 var wasmTable = new WebAssembly.Table({
-  'initial': 220,
-  'maximum': 220 + 0,
+  'initial': 218,
+  'maximum': 218 + 0,
   'element': 'anyfunc'
 });
 
@@ -1426,11 +1426,11 @@ function updateGlobalBufferAndViews(buf) {
 }
 
 var STATIC_BASE = 1024,
-    STACK_BASE = 5314288,
+    STACK_BASE = 5314480,
     STACKTOP = STACK_BASE,
-    STACK_MAX = 71408,
-    DYNAMIC_BASE = 5314288,
-    DYNAMICTOP_PTR = 71248;
+    STACK_MAX = 71600,
+    DYNAMIC_BASE = 5314480,
+    DYNAMICTOP_PTR = 71440;
 
 
 
@@ -1881,14 +1881,14 @@ var tempI64;
 // === Body ===
 
 var ASM_CONSTS = {
-  14240: function() {if ((window.AudioContext || window.webkitAudioContext) === undefined) { return 0; } if (typeof(miniaudio) === 'undefined') { miniaudio = {}; miniaudio.devices = []; miniaudio.track_device = function(device) { for (var iDevice = 0; iDevice < miniaudio.devices.length; ++iDevice) { if (miniaudio.devices[iDevice] == null) { miniaudio.devices[iDevice] = device; return iDevice; } } miniaudio.devices.push(device); return miniaudio.devices.length - 1; }; miniaudio.untrack_device_by_index = function(deviceIndex) { miniaudio.devices[deviceIndex] = null; while (miniaudio.devices.length > 0) { if (miniaudio.devices[miniaudio.devices.length-1] == null) { miniaudio.devices.pop(); } else { break; } } }; miniaudio.untrack_device = function(device) { for (var iDevice = 0; iDevice < miniaudio.devices.length; ++iDevice) { if (miniaudio.devices[iDevice] == device) { return miniaudio.untrack_device_by_index(iDevice); } } }; miniaudio.get_device_by_index = function(deviceIndex) { return miniaudio.devices[deviceIndex]; }; } return 1;},  
- 15480: function() {return (navigator.mediaDevices !== undefined && navigator.mediaDevices.getUserMedia !== undefined);},  
- 15621: function() {try { var temp = new (window.AudioContext || window.webkitAudioContext)(); var sampleRate = temp.sampleRate; temp.close(); return sampleRate; } catch(e) { return 0; }},  
- 15883: function($0, $1, $2, $3, $4) {var channels = $0; var sampleRate = $1; var bufferSize = $2; var isCapture = $3; var pDevice = $4; if (typeof(miniaudio) === 'undefined') { return -1; } var device = {}; device.webaudio = new (window.AudioContext || window.webkitAudioContext)({sampleRate:sampleRate}); device.webaudio.suspend(); device.intermediaryBufferSizeInBytes = channels * bufferSize * 4; device.intermediaryBuffer = Module._malloc(device.intermediaryBufferSizeInBytes); device.intermediaryBufferView = new Float32Array(Module.HEAPF32.buffer, device.intermediaryBuffer, device.intermediaryBufferSizeInBytes); device.scriptNode = device.webaudio.createScriptProcessor(bufferSize, channels, channels); if (isCapture) { device.scriptNode.onaudioprocess = function(e) { if (device.intermediaryBuffer === undefined) { return; } for (var iChannel = 0; iChannel < e.outputBuffer.numberOfChannels; ++iChannel) { e.outputBuffer.getChannelData(iChannel).fill(0.0); } var sendSilence = false; if (device.streamNode === undefined) { sendSilence = true; } if (e.inputBuffer.numberOfChannels != channels) { console.log("Capture: Channel count mismatch. " + e.inputBufer.numberOfChannels + " != " + channels + ". Sending silence."); sendSilence = true; } var totalFramesProcessed = 0; while (totalFramesProcessed < e.inputBuffer.length) { var framesRemaining = e.inputBuffer.length - totalFramesProcessed; var framesToProcess = framesRemaining; if (framesToProcess > (device.intermediaryBufferSizeInBytes/channels/4)) { framesToProcess = (device.intermediaryBufferSizeInBytes/channels/4); } if (sendSilence) { device.intermediaryBufferView.fill(0.0); } else { for (var iFrame = 0; iFrame < framesToProcess; ++iFrame) { for (var iChannel = 0; iChannel < e.inputBuffer.numberOfChannels; ++iChannel) { device.intermediaryBufferView[iFrame*channels + iChannel] = e.inputBuffer.getChannelData(iChannel)[totalFramesProcessed + iFrame]; } } } ccall("ma_device_process_pcm_frames_capture__webaudio", "undefined", ["number", "number", "number"], [pDevice, framesToProcess, device.intermediaryBuffer]); totalFramesProcessed += framesToProcess; } }; navigator.mediaDevices.getUserMedia({audio:true, video:false}) .then(function(stream) { device.streamNode = device.webaudio.createMediaStreamSource(stream); device.streamNode.connect(device.scriptNode); device.scriptNode.connect(device.webaudio.destination); }) .catch(function(error) { device.scriptNode.connect(device.webaudio.destination); }); } else { device.scriptNode.onaudioprocess = function(e) { if (device.intermediaryBuffer === undefined) { return; } var outputSilence = false; if (e.outputBuffer.numberOfChannels != channels) { console.log("Playback: Channel count mismatch. " + e.outputBufer.numberOfChannels + " != " + channels + ". Outputting silence."); outputSilence = true; return; } var totalFramesProcessed = 0; while (totalFramesProcessed < e.outputBuffer.length) { var framesRemaining = e.outputBuffer.length - totalFramesProcessed; var framesToProcess = framesRemaining; if (framesToProcess > (device.intermediaryBufferSizeInBytes/channels/4)) { framesToProcess = (device.intermediaryBufferSizeInBytes/channels/4); } ccall("ma_device_process_pcm_frames_playback__webaudio", "undefined", ["number", "number", "number"], [pDevice, framesToProcess, device.intermediaryBuffer]); if (outputSilence) { for (var iChannel = 0; iChannel < e.outputBuffer.numberOfChannels; ++iChannel) { e.outputBuffer.getChannelData(iChannel).fill(0.0); } } else { for (var iChannel = 0; iChannel < e.outputBuffer.numberOfChannels; ++iChannel) { for (var iFrame = 0; iFrame < framesToProcess; ++iFrame) { e.outputBuffer.getChannelData(iChannel)[totalFramesProcessed + iFrame] = device.intermediaryBufferView[iFrame*channels + iChannel]; } } } totalFramesProcessed += framesToProcess; } }; device.scriptNode.connect(device.webaudio.destination); } return miniaudio.track_device(device);},  
- 19767: function($0) {return miniaudio.get_device_by_index($0).webaudio.sampleRate;},  
- 19869: function($0) {var device = miniaudio.get_device_by_index($0); if (device.scriptNode !== undefined) { device.scriptNode.onaudioprocess = function(e) {}; device.scriptNode.disconnect(); device.scriptNode = undefined; } if (device.streamNode !== undefined) { device.streamNode.disconnect(); device.streamNode = undefined; } device.webaudio.close(); device.webaudio = undefined; if (device.intermediaryBuffer !== undefined) { Module._free(device.intermediaryBuffer); device.intermediaryBuffer = undefined; device.intermediaryBufferView = undefined; device.intermediaryBufferSizeInBytes = undefined; } miniaudio.untrack_device_by_index($0);},  
- 20548: function($0) {miniaudio.get_device_by_index($0).webaudio.resume();},  
- 20630: function($0) {miniaudio.get_device_by_index($0).webaudio.suspend();}
+  14427: function() {if ((window.AudioContext || window.webkitAudioContext) === undefined) { return 0; } if (typeof(miniaudio) === 'undefined') { miniaudio = {}; miniaudio.devices = []; miniaudio.track_device = function(device) { for (var iDevice = 0; iDevice < miniaudio.devices.length; ++iDevice) { if (miniaudio.devices[iDevice] == null) { miniaudio.devices[iDevice] = device; return iDevice; } } miniaudio.devices.push(device); return miniaudio.devices.length - 1; }; miniaudio.untrack_device_by_index = function(deviceIndex) { miniaudio.devices[deviceIndex] = null; while (miniaudio.devices.length > 0) { if (miniaudio.devices[miniaudio.devices.length-1] == null) { miniaudio.devices.pop(); } else { break; } } }; miniaudio.untrack_device = function(device) { for (var iDevice = 0; iDevice < miniaudio.devices.length; ++iDevice) { if (miniaudio.devices[iDevice] == device) { return miniaudio.untrack_device_by_index(iDevice); } } }; miniaudio.get_device_by_index = function(deviceIndex) { return miniaudio.devices[deviceIndex]; }; } return 1;},  
+ 15667: function() {return (navigator.mediaDevices !== undefined && navigator.mediaDevices.getUserMedia !== undefined);},  
+ 15808: function() {try { var temp = new (window.AudioContext || window.webkitAudioContext)(); var sampleRate = temp.sampleRate; temp.close(); return sampleRate; } catch(e) { return 0; }},  
+ 16070: function($0, $1, $2, $3, $4) {var channels = $0; var sampleRate = $1; var bufferSize = $2; var isCapture = $3; var pDevice = $4; if (typeof(miniaudio) === 'undefined') { return -1; } var device = {}; device.webaudio = new (window.AudioContext || window.webkitAudioContext)({sampleRate:sampleRate}); device.webaudio.suspend(); device.intermediaryBufferSizeInBytes = channels * bufferSize * 4; device.intermediaryBuffer = Module._malloc(device.intermediaryBufferSizeInBytes); device.intermediaryBufferView = new Float32Array(Module.HEAPF32.buffer, device.intermediaryBuffer, device.intermediaryBufferSizeInBytes); device.scriptNode = device.webaudio.createScriptProcessor(bufferSize, channels, channels); if (isCapture) { device.scriptNode.onaudioprocess = function(e) { if (device.intermediaryBuffer === undefined) { return; } for (var iChannel = 0; iChannel < e.outputBuffer.numberOfChannels; ++iChannel) { e.outputBuffer.getChannelData(iChannel).fill(0.0); } var sendSilence = false; if (device.streamNode === undefined) { sendSilence = true; } if (e.inputBuffer.numberOfChannels != channels) { console.log("Capture: Channel count mismatch. " + e.inputBufer.numberOfChannels + " != " + channels + ". Sending silence."); sendSilence = true; } var totalFramesProcessed = 0; while (totalFramesProcessed < e.inputBuffer.length) { var framesRemaining = e.inputBuffer.length - totalFramesProcessed; var framesToProcess = framesRemaining; if (framesToProcess > (device.intermediaryBufferSizeInBytes/channels/4)) { framesToProcess = (device.intermediaryBufferSizeInBytes/channels/4); } if (sendSilence) { device.intermediaryBufferView.fill(0.0); } else { for (var iFrame = 0; iFrame < framesToProcess; ++iFrame) { for (var iChannel = 0; iChannel < e.inputBuffer.numberOfChannels; ++iChannel) { device.intermediaryBufferView[iFrame*channels + iChannel] = e.inputBuffer.getChannelData(iChannel)[totalFramesProcessed + iFrame]; } } } ccall("ma_device_process_pcm_frames_capture__webaudio", "undefined", ["number", "number", "number"], [pDevice, framesToProcess, device.intermediaryBuffer]); totalFramesProcessed += framesToProcess; } }; navigator.mediaDevices.getUserMedia({audio:true, video:false}) .then(function(stream) { device.streamNode = device.webaudio.createMediaStreamSource(stream); device.streamNode.connect(device.scriptNode); device.scriptNode.connect(device.webaudio.destination); }) .catch(function(error) { device.scriptNode.connect(device.webaudio.destination); }); } else { device.scriptNode.onaudioprocess = function(e) { if (device.intermediaryBuffer === undefined) { return; } var outputSilence = false; if (e.outputBuffer.numberOfChannels != channels) { console.log("Playback: Channel count mismatch. " + e.outputBufer.numberOfChannels + " != " + channels + ". Outputting silence."); outputSilence = true; return; } var totalFramesProcessed = 0; while (totalFramesProcessed < e.outputBuffer.length) { var framesRemaining = e.outputBuffer.length - totalFramesProcessed; var framesToProcess = framesRemaining; if (framesToProcess > (device.intermediaryBufferSizeInBytes/channels/4)) { framesToProcess = (device.intermediaryBufferSizeInBytes/channels/4); } ccall("ma_device_process_pcm_frames_playback__webaudio", "undefined", ["number", "number", "number"], [pDevice, framesToProcess, device.intermediaryBuffer]); if (outputSilence) { for (var iChannel = 0; iChannel < e.outputBuffer.numberOfChannels; ++iChannel) { e.outputBuffer.getChannelData(iChannel).fill(0.0); } } else { for (var iChannel = 0; iChannel < e.outputBuffer.numberOfChannels; ++iChannel) { for (var iFrame = 0; iFrame < framesToProcess; ++iFrame) { e.outputBuffer.getChannelData(iChannel)[totalFramesProcessed + iFrame] = device.intermediaryBufferView[iFrame*channels + iChannel]; } } } totalFramesProcessed += framesToProcess; } }; device.scriptNode.connect(device.webaudio.destination); } return miniaudio.track_device(device);},  
+ 19954: function($0) {return miniaudio.get_device_by_index($0).webaudio.sampleRate;},  
+ 20056: function($0) {var device = miniaudio.get_device_by_index($0); if (device.scriptNode !== undefined) { device.scriptNode.onaudioprocess = function(e) {}; device.scriptNode.disconnect(); device.scriptNode = undefined; } if (device.streamNode !== undefined) { device.streamNode.disconnect(); device.streamNode = undefined; } device.webaudio.close(); device.webaudio = undefined; if (device.intermediaryBuffer !== undefined) { Module._free(device.intermediaryBuffer); device.intermediaryBuffer = undefined; device.intermediaryBufferView = undefined; device.intermediaryBufferSizeInBytes = undefined; } miniaudio.untrack_device_by_index($0);},  
+ 20735: function($0) {miniaudio.get_device_by_index($0).webaudio.resume();},  
+ 20817: function($0) {miniaudio.get_device_by_index($0).webaudio.suspend();}
 };
 
 function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
@@ -1899,7 +1899,7 @@ function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
 
 
 
-// STATICTOP = STATIC_BASE + 70384;
+// STATICTOP = STATIC_BASE + 70576;
 /* global initializers */  __ATINIT__.push({ func: function() { ___wasm_call_ctors() } });
 
 
@@ -5510,7 +5510,7 @@ function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
     }
 
   function _emscripten_get_sbrk_ptr() {
-      return 71248;
+      return 71440;
     }
 
   
@@ -9094,11 +9094,6 @@ var dynCall_vii = Module["dynCall_vii"] = function() {
 };
 
 /** @type {function(...*):?} */
-var dynCall_viii = Module["dynCall_viii"] = function() {
-  return (dynCall_viii = Module["dynCall_viii"] = Module["asm"]["dynCall_viii"]).apply(null, arguments);
-};
-
-/** @type {function(...*):?} */
 var dynCall_vi = Module["dynCall_vi"] = function() {
   return (dynCall_vi = Module["dynCall_vi"] = Module["asm"]["dynCall_vi"]).apply(null, arguments);
 };
@@ -9106,6 +9101,11 @@ var dynCall_vi = Module["dynCall_vi"] = function() {
 /** @type {function(...*):?} */
 var dynCall_iiii = Module["dynCall_iiii"] = function() {
   return (dynCall_iiii = Module["dynCall_iiii"] = Module["asm"]["dynCall_iiii"]).apply(null, arguments);
+};
+
+/** @type {function(...*):?} */
+var dynCall_viii = Module["dynCall_viii"] = function() {
+  return (dynCall_viii = Module["dynCall_viii"] = Module["asm"]["dynCall_viii"]).apply(null, arguments);
 };
 
 /** @type {function(...*):?} */
