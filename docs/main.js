@@ -192,7 +192,7 @@ var Module = typeof Module !== 'undefined' ? Module : {};
     }
   
    }
-   loadPackage({"files": [{"filename": "/assets/bjork-all-is-full-of-love.mpg", "start": 0, "end": 47519744, "audio": 0}], "remote_package_size": 47519744, "package_uuid": "29a74fd3-65f8-4038-88f6-d9e0dbd309d9"});
+   loadPackage({"files": [{"filename": "/assets/bjork-all-is-full-of-love.mpg", "start": 0, "end": 47519744, "audio": 0}], "remote_package_size": 47519744, "package_uuid": "159fd2ae-23c9-4d61-8116-9ecc84a16db3"});
   
   })();
   

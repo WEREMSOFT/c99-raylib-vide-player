@@ -27,7 +27,7 @@ void update_frame(void* context)
             DrawFPS(10, 10);
         }
         EndDrawing();
-        if(IsMouseButtonDown(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_A)) {
+        if(GetTouchPointsCount() > 0 || IsMouseButtonDown(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_A)) {
             *app_context = app_context_create();
             app_context->state = APP_STATE_PLAYING_VIDEO;
             printf("CLICKED!!\n");
