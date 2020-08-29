@@ -48,6 +48,8 @@ app_context_t app_context_create(){
 
 	plm_set_audio_stream(return_value.plm_video, 0);
 
+    printf("video size: %d %d", plm_get_width(return_value.plm_video), plm_get_height(return_value.plm_video));
+
     int num_pixels = plm_get_width(return_value.plm_video) * plm_get_height(return_value.plm_video);
 	uint8_t *rgb_data = (uint8_t*)malloc(num_pixels * 3);
 
