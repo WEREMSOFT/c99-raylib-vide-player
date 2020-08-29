@@ -21,26 +21,6 @@ typedef struct app_context_t {
     double frame_rate;
 } app_context_t;
 
-
-void app_on_audio(plm_t *mpeg, plm_samples_t *samples, void *user) {
-	app_context_t *app_context = (app_context_t *)user;
-    while(IsAudioStreamProcessed(app_context->audio_stream))
-        UpdateAudioStream(app_context->audio_stream, samples->interleaved, PLM_AUDIO_SAMPLES_PER_FRAME * 2);
-}
-
-void app_on_video(plm_t *mpeg, plm_frame_t *frame, void *user) {
-	app_context_t *app_context = (app_context_t *)user;
-
-    static int stride = 2880;
- 
-    plm_frame_to_rgb(frame, app_context->video_frame.data, stride);
-
-    UpdateTexture(app_context->video_container_texture, app_context->video_frame.data);
-
-}
-
-#define AUDIO_BUFFER_SIZE 1152
-
 app_context_t app_context_create(){
     app_context_t return_value = {0};
 
@@ -59,7 +39,7 @@ app_context_t app_context_create(){
         int sample_rate = plm_get_samplerate(return_value.plm_video);
 
         return_value.audio_stream = InitAudioStream(sample_rate, 32, 2);
-        // return_value.audio_stream.sampleSize = 1152;
+
         PlayAudioStream(return_value.audio_stream);
         plm_set_audio_lead_time(return_value.plm_video, (double)PLM_AUDIO_SAMPLES_PER_FRAME/ (double)sample_rate);
     }
@@ -85,10 +65,10 @@ void app_context_fini(app_context_t* app_context){
     UnloadImage(app_context->video_frame);
 }
 
-void update_frame(app_context_t* app_context)
+void update_frame(void* context)
 {
+    app_context_t* app_context = (app_context_t*) context;
     static double elapsed_time = 0.0;
-    static double elapsed_time_increment = 0.001;
 
     elapsed_time = (GetTime() - app_context->base_time);
 
@@ -106,6 +86,22 @@ void update_frame(app_context_t* app_context)
     }
     EndDrawing();
 
+}
+
+void app_on_audio(plm_t *mpeg, plm_samples_t *samples, void *user) {
+	app_context_t *app_context = (app_context_t *)user;
+    
+    UpdateAudioStream(app_context->audio_stream, samples->interleaved, PLM_AUDIO_SAMPLES_PER_FRAME * 2);
+}
+
+void app_on_video(plm_t *mpeg, plm_frame_t *frame, void *user) {
+	app_context_t *app_context = (app_context_t *)user;
+
+    static int stride = 2880;
+ 
+    plm_frame_to_rgb(frame, app_context->video_frame.data, stride);
+
+    UpdateTexture(app_context->video_container_texture, app_context->video_frame.data);
 }
 
 int main(void)
