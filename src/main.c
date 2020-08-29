@@ -12,7 +12,13 @@
 #define WIDTH 800
 #define HEIGHT 600
 
+enum app_state_enum {
+    APP_STATE_WAITING_FOR_INTERACTION,
+    APP_STATE_PLAYING_VIDEO,
+};
+
 typedef struct app_context_t {
+    unsigned int state;
     plm_t* plm_video;
     Image video_frame;
     Texture2D video_container_texture;
@@ -35,6 +41,7 @@ app_context_t app_context_create(){
     plm_set_loop(return_value.plm_video, true);
 
     if(plm_get_num_audio_streams(return_value.plm_video) > 0){
+        SetAudioStreamBufferSizeDefault(1152 * 4);
         InitAudioDevice();
         int sample_rate = plm_get_samplerate(return_value.plm_video);
 
@@ -91,6 +98,9 @@ void update_frame(void* context)
 void app_on_audio(plm_t *mpeg, plm_samples_t *samples, void *user) {
 	app_context_t *app_context = (app_context_t *)user;
     
+    printf("Samples Size %d\n", samples->count);
+    printf("Samples time %f\n", samples->time);
+
     UpdateAudioStream(app_context->audio_stream, samples->interleaved, PLM_AUDIO_SAMPLES_PER_FRAME * 2);
 }
 
