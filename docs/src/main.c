@@ -23,7 +23,7 @@ void update_frame(void* context)
         BeginDrawing();
         {
             ClearBackground(WHITE);
-            DrawText("CLICK TO START THE VIDEO", 150, 400, 32, DARKGRAY);
+            DrawText("CLICK TO START THE VIDEO", 330, 200, 20, LIGHTGRAY);
             DrawFPS(10, 10);
         }
         EndDrawing();
@@ -34,11 +34,13 @@ void update_frame(void* context)
         }
         break;
     case APP_STATE_PLAYING_VIDEO:
-        elapsed_time = (GetTime() - app_context->base_time);
+        elapsed_time = (GetTime() - app_context->last_time);
 
         if(elapsed_time >= (1.0 / app_context->frame_rate)){
-            app_context->base_time = GetTime();
+            app_context->last_time = GetTime();
             
+            plm_video_set_time(app_context->plm_video, app_context->last_time - app_context->base_time);
+
             plm_frame_t *frame = plm_decode_video(app_context->plm_video);
     
             static int stride = 2880;

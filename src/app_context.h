@@ -18,6 +18,7 @@ typedef struct app_context_t {
     Texture2D video_container_texture;
     AudioStream audio_stream;
     double base_time;
+    double last_time;
     double frame_rate;
     plm_samples_t* samples;
 } app_context_t;
@@ -29,7 +30,7 @@ app_context_t app_context_create(){
 
     assert(return_value.plm_video && "Can't open video");
 
-    return_value.base_time = GetTime();
+    return_value.last_time = return_value.base_time = GetTime();
 
     return_value.frame_rate = plm_get_framerate(return_value.plm_video);
 
