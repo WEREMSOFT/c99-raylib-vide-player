@@ -20,6 +20,8 @@ typedef struct app_context_t {
     double base_time;
     double last_time;
     double frame_rate;
+    double frame_time;
+    unsigned int video_vertical_line_size_in_bytes;
     plm_samples_t* samples;
 } app_context_t;
 
@@ -33,6 +35,7 @@ app_context_t app_context_create(){
     return_value.last_time = return_value.base_time = GetTime();
 
     return_value.frame_rate = plm_get_framerate(return_value.plm_video);
+    return_value.frame_time = 1.0f / return_value.frame_rate;
 
     plm_set_loop(return_value.plm_video, true);
 
@@ -50,6 +53,8 @@ app_context_t app_context_create(){
 	plm_set_audio_stream(return_value.plm_video, 0);
 
     printf("video size: %d %d", plm_get_width(return_value.plm_video), plm_get_height(return_value.plm_video));
+
+    return_value.video_vertical_line_size_in_bytes = plm_get_width(return_value.plm_video) * 3;
 
     int num_pixels = plm_get_width(return_value.plm_video) * plm_get_height(return_value.plm_video);
 	uint8_t *rgb_data = (uint8_t*)malloc(num_pixels * 3);

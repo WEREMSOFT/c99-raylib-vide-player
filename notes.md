@@ -1,159 +1,141 @@
-/*******************************************************************************************
-*
-*   raylib [textures] example - MPEG video playing
-*
-*   We have two options to decode video & audio using pl_mpeg.h library:
-*
-*   1) Use plm_decode() and just hand over the delta time since the last call.
-*      It will decode everything needed and call your callbacks (specified through
-*      plm_set_{video|audio}_decode_callback()) any number of times.
-*
-*   2) Use plm_decode_video() and plm_decode_audio() to decode exactly one
-*      frame of video or audio data at a time. How you handle the synchronization of
-*     both streams is up to you.
-*
-*   This example uses option 2)
-*
-*   This example has been created using raylib 3.0 (www.raylib.com)
-*   raylib is licensed under an unmodified zlib/libpng license (View raylib.h for details)
-*
-*   Copyright (c) 2020 Ramon Santamaria (@raysan5)
-*
-********************************************************************************************/
 
 #include "raylib.h"
-
-#include <stdlib.h>
 
 #define PL_MPEG_IMPLEMENTATION
 #include "pl_mpeg.h"
 
-int main(void)
+#ifdef PLATFORM_WEB
+    #include <emscripten/emscripten.h>
+#endif
+
+enum app_state_enum {
+    APP_STATE_WAITING_FOR_INTERACTION,
+    APP_STATE_PLAYING_VIDEO,
+};
+
+typedef struct app_context_t {
+    unsigned int state;
+    plm_t* plm_video;
+    Image video_frame;
+    Texture2D video_container_texture;
+    AudioStream audio_stream;
+    double base_time;
+    double last_time;
+    double frame_rate;
+    plm_samples_t* samples;
+} app_context_t;
+
+app_context_t app_context_create(const char *fileName)
 {
-    // Initialization
-    //---------------------------------------------------------
-    const int screenWidth = 1280;
-    const int screenHeight = 720;
+    app_context_t return_value = {0};
 
-    InitWindow(screenWidth, screenHeight, "raylib [textures] example - MPEG video playing");
-    
-    AudioStream stream = { 0 };
+    return_value.plm_video = plm_create_with_filename(fileName);
 
-    plm_t *plm = plm_create_with_filename("bjork-all-is-full-of-love.mpg");
+    return_value.last_time = return_value.base_time = GetTime();
 
-    if (!plm) return 1;
-    
-    double framerate = plm_get_framerate(plm);
-    int samplerate = plm_get_samplerate(plm);
+    return_value.frame_rate = plm_get_framerate(return_value.plm_video);
 
-	TraceLog(LOG_INFO, "Framerate: %f, samplerate: %d",	(float)framerate, samplerate);
-       
-	if (plm_get_num_audio_streams(plm) > 0) 
+    plm_set_loop(return_value.plm_video, true);
+
+    if (plm_get_num_audio_streams(return_value.plm_video) > 0)
     {
         InitAudioDevice();
+        int sample_rate = plm_get_samplerate(return_value.plm_video);
 
-        // Init raw audio stream (sample rate: 44100, sample size: 32bit, channels: 2-stereo)
-        // WARNING: InitAudioDevice() inits internal double buffering system to AUDIO_BUFFER_SIZE*2,
-        // but every audio sample is PLM_AUDIO_SAMPLES_PER_FRAME, usually 1152 samples...
-        // Two solutions:
-        // 1. Just change raudio internal AUDIO_BUFFER_SIZE to match PLM_AUDIO_SAMPLES_PER_FRAME (1152)
-        // 2. Keep internal raudio AUDIO_BUFFER_SIZE (4096) and fill it with multiple plm audio samples,
-        //    main issue is that (4096/1152 = 3.555) no round numbers, so, some samples should be divided
-        //    into the double buffering system... not trivial to do...
-        stream = InitAudioStream(samplerate, 32, 2);
+        SetAudioStreamBufferSizeDefault(1152);
+        return_value.audio_stream = InitAudioStream(sample_rate, 32, 2);
 
-        PlayAudioStream(stream);        // Start processing stream buffer (no data loaded currently)
-
-		// Adjust the audio lead time according to the audio_spec buffer size
-		plm_set_audio_lead_time(plm, (double)PLM_AUDIO_SAMPLES_PER_FRAME/(double)samplerate);
-	}
-	
-	plm_set_loop(plm, TRUE);
-	plm_set_audio_enabled(plm, TRUE, 0);
-	
-	int width = plm_get_width(plm);
-	int height = plm_get_height(plm);
-    
-	plm_frame_t *frame = NULL;
-    plm_samples_t *sample = NULL;
-    
-    Image imFrame = { 0 };
-    imFrame.width = width;
-    imFrame.height = height;
-    imFrame.format = UNCOMPRESSED_R8G8B8;
-    imFrame.mipmaps = 1;
-    imFrame.data = (unsigned char *)malloc(width*height*3);
-
-    Texture texture = LoadTextureFromImage(imFrame);
-    
-    bool pause = false;
-    int framesCounter = 0;
-    
-    double baseTime = GetTime();    // Time since InitWindow()
-
-    //SetTargetFPS(100);              // Set our game to run at 100 frames-per-second
-    //----------------------------------------------------------
-
-    // Main game loop
-    while (!WindowShouldClose())    // Detect window close button or ESC key
-    {
-        // Update
-        //-----------------------------------------------------
-        if (IsKeyPressed(KEY_SPACE)) pause = !pause;
-
-        if (!pause)
-        {
-            // Video should run at 'framerate' fps => One new frame every 1/framerate
-            double time = (GetTime() - baseTime);
-            
-            if (time >= (1.0/framerate))
-            {
-                baseTime = GetTime();
-                
-                // Decode video frame
-                frame = plm_decode_video(plm);          // Get frame as 3 planes: Y, Cr, Cb
-                plm_frame_to_rgb(frame, imFrame.data);  // Convert (Y, Cr, Cb) to RGB on the CPU (slow)
-                
-                // Update texture
-                UpdateTexture(texture, imFrame.data);
-            }
-
-            // Refill audio stream if required
-            while (IsAudioStreamProcessed(stream))
-            {
-                // Decode audio sample
-                sample = plm_decode_audio(plm);
-                
-                // Copy finished frame to audio stream
-                UpdateAudioStream(stream, sample->interleaved, PLM_AUDIO_SAMPLES_PER_FRAME*2);
-            }
-        }
-        //-----------------------------------------------------
-
-        // Draw
-        //-----------------------------------------------------
-        BeginDrawing();
-
-            ClearBackground(RAYWHITE);
-
-            DrawTexture(texture, GetScreenWidth()/2 - texture.width/2, GetScreenHeight()/2 - texture.height/2, WHITE);
-
-        EndDrawing();
-        //-----------------------------------------------------
+        PlayAudioStream(return_value.audio_stream);
+        //plm_set_audio_lead_time(return_value.plm_video, (double)PLM_AUDIO_SAMPLES_PER_FRAME/(double)sample_rate);
     }
 
-    // De-Initialization
-    //---------------------------------------------------------
-    UnloadImage(imFrame);
-    UnloadTexture(texture);
-    
-    CloseAudioStream(stream);
-    CloseAudioDevice();
+	plm_set_audio_stream(return_value.plm_video, 0);
 
-    plm_destroy(plm);
-    
-    CloseWindow();        // Close window and OpenGL context
-    //----------------------------------------------------------
+    int num_pixels = plm_get_width(return_value.plm_video) * plm_get_height(return_value.plm_video);
+	uint8_t *rgb_data = (uint8_t*)malloc(num_pixels * 3);
+
+    return_value.video_frame.data = rgb_data;
+    return_value.video_frame.width = plm_get_width(return_value.plm_video);
+    return_value.video_frame.height = plm_get_height(return_value.plm_video);
+    return_value.video_frame.format = UNCOMPRESSED_R8G8B8;
+    return_value.video_frame.mipmaps = 1;
+
+    return_value.video_container_texture = LoadTextureFromImage(return_value.video_frame);
+
+    return return_value;
+}
+
+void app_context_fini(app_context_t* app_context)
+{
+    plm_destroy(app_context->plm_video);
+    UnloadImage(app_context->video_frame);
+    CloseAudioStream(app_context->audio_stream);
+    CloseAudioDevice();
+}
+
+static double elapsed_time = 0.0;
+
+void UpdateDrawFrame(void* context)
+{
+    app_context_t* app_context = (app_context_t*)context;
+
+    if (app_context->state == APP_STATE_WAITING_FOR_INTERACTION)
+    {
+        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_A))
+        {
+            *app_context = app_context_create("resources/bjork-all-is-full-of-love.mpg");
+            app_context->state = APP_STATE_PLAYING_VIDEO;
+        }
+    }
+    else if (app_context->state == APP_STATE_PLAYING_VIDEO)
+    {
+        elapsed_time = (GetTime() - app_context->last_time);
+
+        if (elapsed_time >= (1.0/app_context->frame_rate))
+        {
+            app_context->last_time = GetTime();
+            
+            plm_video_set_time(app_context->plm_video->video_decoder, app_context->last_time - app_context->base_time);
+            plm_frame_t *frame = plm_decode_video(app_context->plm_video);
+            plm_frame_to_rgb(frame, app_context->video_frame.data, app_context->video_container_texture.width*3);
+            
+            UpdateTexture(app_context->video_container_texture, app_context->video_frame.data);
+        }
+
+        while (IsAudioStreamProcessed(app_context->audio_stream))
+        {
+            app_context->samples = plm_decode_audio(app_context->plm_video);
+            UpdateAudioStream(app_context->audio_stream, app_context->samples->interleaved, PLM_AUDIO_SAMPLES_PER_FRAME*2);    
+        }
+    }
+
+    BeginDrawing();
+
+        ClearBackground(WHITE);
+        
+        if (app_context->state == APP_STATE_WAITING_FOR_INTERACTION) DrawText("CLICK TO START THE VIDEO", 330, 200, 20, LIGHTGRAY);
+        else DrawTexture(app_context->video_container_texture, 0, 0, WHITE);
+        
+        DrawFPS(10, 10);
+
+    EndDrawing();
+}
+
+int main(void)
+{
+    InitWindow(960, 540, "This is a video decoding test");
+    SetTargetFPS(100);
+   
+    app_context_t app_context = {0};
+
+#ifdef PLATFORM_WEB
+    emscripten_set_main_loop_arg(UpdateDrawFrame, &app_context, 0, 1);
+#else
+    while (!WindowShouldClose()) UpdateDrawFrame(&app_context);
+#endif
+
+    app_context_fini(&app_context);
+    CloseWindow();
 
     return 0;
 }

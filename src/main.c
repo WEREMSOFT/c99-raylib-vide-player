@@ -36,15 +36,12 @@ void update_frame(void* context)
     case APP_STATE_PLAYING_VIDEO:
         elapsed_time = (GetTime() - app_context->last_time);
 
-        if(elapsed_time >= (1.0 / app_context->frame_rate)){
+        if(elapsed_time >= app_context->frame_time){
             app_context->last_time = GetTime();
             
-            plm_video_set_time(app_context->plm_video, app_context->last_time - app_context->base_time);
-
             plm_frame_t *frame = plm_decode_video(app_context->plm_video);
     
-            static int stride = 2880;
-            plm_frame_to_rgb(frame, app_context->video_frame.data, stride);
+            plm_frame_to_rgb(frame, app_context->video_frame.data, app_context->video_vertical_line_size_in_bytes);
             UpdateTexture(app_context->video_container_texture, app_context->video_frame.data);
             BeginDrawing();
             {
